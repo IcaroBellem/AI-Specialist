@@ -99,7 +99,7 @@ def similarity_search(query, k=5):
     return [documents[idx] for idx in indices]
 
 # Função para interação com o chatbot
-def chatbot_interaction(question):
+def chatbot_interaction(question, history):
     # Responder a perguntas básicas
     basic_responses = {
         "bom dia": "Bom dia! Como posso ajudar você hoje?",
@@ -117,10 +117,13 @@ def chatbot_interaction(question):
     docs = similarity_search(question, k=5)
     context = " ".join(docs)
     
+    # Construir histórico para o prompt
+    history_text = "\n".join([f"Usuário: {msg['content']}" if msg['role'] == 'user' else f"Assistente: {msg['content']}" for msg in history])
+
     if context.strip():  # Se houver contexto relevante nos PDFs
-        prompt = f"Você é um especialista em informática e hardware simpático e está respondendo a pergunta de um usuário. O usuário pergunta: {question}. Responda a pergunta do usuário de forma amigável e informativa utilizando o contexto: {context}. **Caso não saiba a resposta, diga que não sabe.** e de respostar que sejam completas, porem não grandes. use emojis apenas no final de todas as respostas."
+        prompt = f"Você é um especialista em informática e hardware simpático e está respondendo a pergunta de um usuário. O usuário pergunta: {question}. Responda a pergunta do usuário de forma amigável e informativa utilizando o contexto: {context}. **Caso não saiba a resposta, diga que não sabe.** e de respostar que sejam completas, porem não grandes. use emojis apenas no final de todas as respostas.\n\nHistórico:\n{history_text}\n\nNova pergunta: {question}. lembrando Você é um especialista em informática e hardware simpático ou seja você nao sabe coisas alem da sua especialide. porem se for fora da sua especilaide, mas tiver a infomação na sua base dados fornecidos, responda o usuario. mesmo se uma nova conversa for iniciada."
     else:
-        prompt = f"Você é um assistente especializado em informática e hardware. Responda a pergunta do usuário da melhor forma possível, porem não de respostar grandes. Pergunta: {question}"
+        prompt = f"Você é um assistente especializado em informática e hardware. Responda a pergunta do usuário da melhor forma possível, porem não de respostar grandes. Pergunta: {question}\n\nHistórico:\n{history_text}\n\nNova pergunta: {question}. lembrando Você é um especialista em informática e hardware simpático ou seja você nao sabe coisas alem da sua especialide. mesmo se uma nova conversa for iniciada. porem se for fora da sua especilaide, mas tiver a infomação na sua base dados fornecidos, responda o usuario."
     
     try:
         response = llm.invoke(prompt)
@@ -211,15 +214,19 @@ if question := st.chat_input("Qual é a sua dúvida hoje?"):
     question = question.strip().lower()
     if question and is_valid_input(question):
         if current_conv is not None:
+            history = current_conv["messages"]
             current_conv["messages"].append({"role": "user", "content": question})
+            
+            # Mostrar mensagem do usuário imediatamente
             st.chat_message("user").write(question)
-
+            
             with st.spinner("Processando..."):
                 try:
-                    # Chamar a função que interage com o modelo de IA sem usar o histórico
-                    response = chatbot_interaction(question)
+                    # Chamar a função que interage com o modelo de IA utilizando o histórico
+                    response = chatbot_interaction(question, history)
                     current_conv["messages"].append({"role": "assistant", "content": response})
                     st.chat_message("assistant").write(response)
+                    st.experimental_rerun()  # Forçar a atualização da interface
                 except Exception as e:
                     print(f"Erro ao chamar API: {e}")
                     current_conv["messages"].append({"role": "assistant", "content": f"Desculpe, não consegui entender sua pergunta. Erro: {e}"})
