@@ -17,10 +17,10 @@ model = os.getenv("MODEL")
 
 # Configuração do LLM
 llm = ChatGoogleGenerativeAI(
-    temperature=0.6,
+    temperature=0.7,
     google_api_key=os.getenv("GOOGLE_API_KEY"),
     model=model,
-    max_tokens=100,
+    max_tokens=300,
 )
 
 # Função para dividir texto em segmentos menores
@@ -50,7 +50,8 @@ pdf_paths = [
     "./data/arquitetura_e_manutencao.pdf",
     "./data/usabilidade_basica.pdf",
     "./data/How2Build_PC.pdf",
-    "./data/Icrim.pdf"
+    "./data/Icrim.pdf",
+    "./data/defeitos e resoluções.pdf"
 ]
 
 vectorizer = TfidfVectorizer()
@@ -117,9 +118,9 @@ def chatbot_interaction(question):
     context = " ".join(docs)
     
     if context.strip():  # Se houver contexto relevante nos PDFs
-        prompt = f"Você é um especialista em informática e hardware simpatico e está respondendo a pergunta de um usuário. O usuário pergunta: {question}. Responda a pergunta do usuário de forma amigável e informativa **somente e exclusivamente com os dados se caso for perguntas simples e basicas responda normalmente: {context}, jamais responda algo que não esteja nos dados fornecidos**. **Caso não saiba a resposta, diga que não sabe.**"
+        prompt = f"Você é um especialista em informática e hardware simpático e está respondendo a pergunta de um usuário. O usuário pergunta: {question}. Responda a pergunta do usuário de forma amigável e informativa utilizando o contexto: {context}. **Caso não saiba a resposta, diga que não sabe.** e de respostar que sejam completas, porem não grandes. use emojis apenas no final de todas as respostas."
     else:
-        prompt = f"Você é um assistente especializado em informática e hardware. Responda a pergunta do usuário da melhor forma possível. Pergunta: {question}"
+        prompt = f"Você é um assistente especializado em informática e hardware. Responda a pergunta do usuário da melhor forma possível, porem não de respostar grandes. Pergunta: {question}"
     
     try:
         response = llm.invoke(prompt)
@@ -134,12 +135,57 @@ st.title("***TechzAI***")
 st.markdown("*Soluções* **Inteligentes** ao seu ***Alcance!***.")
 
 # Inicializar mensagens de sessão
-if "messages" not in st.session_state:
-    st.session_state["messages"] = [{"role": "assistant", "content": "Olá! Como posso ajudar você hoje?"}]
+if "conversations" not in st.session_state:
+    st.session_state["conversations"] = [{"title": "Novo Chat", "messages": [{"role": "assistant", "content": "Olá! Como posso ajudar você hoje?"}]}]
+if "delete_confirm" not in st.session_state:
+    st.session_state["delete_confirm"] = None
+if "current_conversation_index" not in st.session_state:
+    st.session_state["current_conversation_index"] = 0
 
-# Exibir mensagens na interface do chat
-for message in st.session_state["messages"]:
-    st.chat_message(message["role"]).write(message["content"])
+# Adicionar uma nova conversa
+def add_new_conversation():
+    new_title = f"Novo Chat {len(st.session_state['conversations']) + 1}"
+    st.session_state["conversations"].append({"title": new_title, "messages": [{"role": "assistant", "content": "Olá! Como posso ajudar você hoje?"}]})
+    st.session_state["current_conversation_index"] = len(st.session_state['conversations']) - 1
+
+# Sidebar para gerenciar conversas
+st.sidebar.title("Conversas")
+if st.sidebar.button("Nova Conversa"):
+    add_new_conversation()
+
+# Selecionar conversa existente
+conversation_titles = [conv["title"] for conv in st.session_state["conversations"]]
+if conversation_titles:
+    selected_conversation = st.sidebar.selectbox("Selecionar Conversa", conversation_titles, index=st.session_state["current_conversation_index"])
+    st.session_state["current_conversation_index"] = conversation_titles.index(selected_conversation)
+else:
+    st.sidebar.write("Nenhuma conversa disponível.")
+
+# Função para editar o título da conversa
+def edit_conversation_title(index, new_title):
+    st.session_state["conversations"][index]["title"] = new_title
+
+# Função para apagar uma conversa
+def delete_conversation(index):
+    if st.session_state["delete_confirm"] == index:
+        st.session_state["conversations"].pop(index)
+        st.session_state["delete_confirm"] = None
+        st.session_state["current_conversation_index"] = max(0, len(st.session_state["conversations"]) - 1)
+    else:
+        st.session_state["delete_confirm"] = index
+
+# Exibir conversas existentes
+for i, conv in enumerate(st.session_state["conversations"]):
+    with st.sidebar.expander(conv["title"], expanded=False):
+        new_title = st.text_input("Editar título", value=conv["title"], key=f"title_{i}")
+        if st.button("Salvar título", key=f"save_title_{i}"):
+            edit_conversation_title(i, new_title)
+        if st.button("Apagar", key=f"delete_{i}"):
+            delete_conversation(i)
+        if st.session_state["delete_confirm"] == i:
+            st.write("Tem certeza que deseja apagar esta conversa?")
+            st.button("Sim, apagar", key=f"confirm_delete_{i}", on_click=delete_conversation, args=(i,))
+            st.button("Não, cancelar", key=f"cancel_delete_{i}", on_click=lambda: st.session_state.update({"delete_confirm": None}))
 
 # Função para validar a entrada do usuário
 def is_valid_input(prompt):
@@ -147,21 +193,38 @@ def is_valid_input(prompt):
         return True
     return False
 
+# Selecionar a conversa atual
+if st.session_state["conversations"]:
+    current_conv = st.session_state["conversations"][st.session_state["current_conversation_index"]]
+else:
+    current_conv = None
+
+# Exibir mensagens na interface do chat
+if current_conv:
+    for message in current_conv["messages"]:
+        st.chat_message(message["role"]).write(message["content"])
+else:
+    st.warning("Nenhuma conversa disponível. Por favor, inicie uma nova conversa na barra lateral.")
+
 # Entrada do usuário
 if question := st.chat_input("Qual é a sua dúvida hoje?"):
     question = question.strip().lower()
     if question and is_valid_input(question):
-        st.session_state.messages.append({"role": "user", "content": question})
-        st.chat_message("user").write(question)
+        if current_conv is not None:
+            current_conv["messages"].append({"role": "user", "content": question})
+            st.chat_message("user").write(question)
 
-        with st.spinner("Processando..."):
-            try:
-                response = chatbot_interaction(question)
-                st.session_state.messages.append({"role": "assistant", "content": response})
-                st.chat_message("assistant").write(response)
-            except Exception as e:
-                print(f"Erro ao chamar API: {e}")
-                st.session_state.messages.append({"role": "assistant", "content": f"Desculpe, não consegui entender sua pergunta. Erro: {e}"})
-                st.chat_message("assistant").write("Desculpe, não consegui entender sua pergunta.")
+            with st.spinner("Processando..."):
+                try:
+                    # Chamar a função que interage com o modelo de IA sem usar o histórico
+                    response = chatbot_interaction(question)
+                    current_conv["messages"].append({"role": "assistant", "content": response})
+                    st.chat_message("assistant").write(response)
+                except Exception as e:
+                    print(f"Erro ao chamar API: {e}")
+                    current_conv["messages"].append({"role": "assistant", "content": f"Desculpe, não consegui entender sua pergunta. Erro: {e}"})
+                    st.chat_message("assistant").write("Desculpe, não consegui entender sua pergunta.")
+        else:
+            st.warning("Por favor, selecione uma conversa ou inicie uma nova.")
     else:
         st.warning("Por favor, insira uma pergunta válida.")
