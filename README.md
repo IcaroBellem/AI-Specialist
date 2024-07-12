@@ -61,9 +61,15 @@ Para que a aplicação "TechzAI" funcione corretamente, é necessário instalar 
    - Biblioteca para interagir com a API do Google Generative AI.
    - Instalação: `pip install langchain-google-genai`
 
+7. **Transformers**
+   - Transformers: Biblioteca para trabalhar com modelos de linguagem pré-treinados, como BERT, GPT, etc.,facilitando o uso de NLP avançada em seus projetos.
+   - Sentence Transformers: Especializada em gerar embeddings (representações vetoriais) de frases e documentos inteiros, útil para tarefas como pesquisa semântica, 
+     similaridade de texto, clustering, entre outros.
+   - Instalação: `pip install transformers sentence-transformers` 
+
 ## Instalação Completa
 
 Para instalar todas as bibliotecas necessárias de uma vez, execute o seguinte comando no terminal:
 
-bash
-pip install streamlit pypdf2 numpy joblib scikit-learn python-dotenv langchain-google-genai```
+```bash
+pip install streamlit pypdf2 numpy joblib scikit-learn python-dotenv langchain-google-genai transformers sentence-transformers
