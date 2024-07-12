@@ -24,18 +24,15 @@ def split_text(text, vectorizer, max_tokens=500):
     return segments
 
 def preprocess_pdfs(pdf_paths, documents, vectorizer, processed_dir):
-    # Verificar se o diretório existe e criar se não existir
     if not os.path.exists(processed_dir):
         os.makedirs(processed_dir)
 
     embeddings_path = os.path.join(processed_dir, "embeddings.npy")
     documents_path = os.path.join(processed_dir, "documents.pkl")
     if os.path.exists(embeddings_path) and os.path.exists(documents_path):
-        # Se os arquivos já existirem, carregue-os
         embeddings = np.load(embeddings_path)
         documents.extend(joblib.load(documents_path))
     else:
-        # Caso contrário, processe os PDFs
         for pdf_path in pdf_paths:
             reader = PdfReader(pdf_path)
             for page_num, page in enumerate(reader.pages):
@@ -43,7 +40,6 @@ def preprocess_pdfs(pdf_paths, documents, vectorizer, processed_dir):
                 if text:
                     segments = split_text(text, vectorizer)
                     documents.extend(segments)
-        # Salvar embeddings, documentos e vectorizer
         embeddings = vectorizer.fit_transform(documents).toarray()
         np.save(embeddings_path, embeddings)
         joblib.dump(documents, documents_path)
