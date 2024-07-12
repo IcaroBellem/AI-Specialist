@@ -40,7 +40,8 @@ pdf_files = [
     "formatação.pdf",
     "AngularBasico.pdf",
     "basic-i.pdf",
-    "Aulas_SQL.pdf"
+    "Aulas_SQL.pdf",
+    "gasket mount.pdf"
 ]
 
 pdf_paths = [os.path.join(pdf_dir, file) for file in pdf_files]
