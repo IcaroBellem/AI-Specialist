@@ -6,7 +6,7 @@ from sentence_transformers import SentenceTransformer
 import re
 from concurrent.futures import ThreadPoolExecutor
 
-def split_text(text, max_tokens=512):
+def split_text(text, max_tokens=200):
     sentences = re.split(r'(?<=[.!?]) +', text)
     segments = []
     current_segment = []
@@ -33,9 +33,9 @@ def extract_text_from_pdf(pdf_path):
     for page_num, page in enumerate(reader.pages):
         text = page.extract_text()
         if text:
-            print(f"Texto extraído da página {page_num + 1} do PDF {pdf_path}")
-            segments = split_text(text, max_tokens=512)
+            segments = split_text(text, max_tokens=300)
             all_text.extend(segments)
+            print(f"Texto extraído da página {page_num + 1} do PDF {pdf_path}")
     return all_text
 
 def preprocess_pdfs(pdf_paths, processed_dir):

@@ -17,25 +17,26 @@ def chatbot_interaction(question, history, documents, embeddings, llm):
         "o que você faz?": "Eu sou um assistente virtual especializado em responder perguntas sobre hardware e informática. Como posso ajudar você hoje?"
     }
 
-    if question in basic_responses:
-        return basic_responses[question]
+    if question.lower() in basic_responses:
+        return basic_responses[question.lower()]
 
-    # Calcula os embeddings da pergunta e dos documentos
     question_embedding = calculate_embeddings([question])[0]
 
-    # Encontra os documentos mais similares
-    top_k = 5  # número de documentos mais similares a serem recuperados
+    top_k = 21 
     similar_docs_indices = similarity_search(question_embedding, embeddings, k=top_k)
 
-    # Constrói o contexto com os documentos mais similares encontrados
     context = " ".join([documents[idx] for idx in similar_docs_indices])
+    
+    history_text = "\n".join([f"Usuário: {msg['content']}" if msg['role'] == 'user' else f"Assistente: {msg['content']}" for msg in history])
 
-    if len(history) <= 1:
-        prompt = f"Você é um assistente especializado em informática e hardware. Responda a pergunta do usuário da melhor forma possível, mas não dê respostas longas. Pergunta: {question}"
-    else:
-        history_text = "\n".join([f"Usuário: {msg['content']}" if msg['role'] == 'user' else f"Assistente: {msg['content']}" for msg in history])
-        prompt = f"Você é um especialista em informática e hardware e programação e está respondendo a pergunta de um usuário e voce responde perguntas apenas com base nos. O usuário pergunta: {question}. Responda a pergunta do usuário de forma profissional e informativa utilizando o contexto: {context}. **Caso não saiba a resposta, diga que não sabe.** \n\nHistórico:\n{history_text}\n\nNova pergunta: {question}. Lembre-se que você é um especialista em informática e hardware e programação  e programação simpático e profissional **voce nao usa emoji**, ou seja, você não sabe coisas além da sua especialidade. **Porém se a informação estiver na sua base de dados fornecida responda ao usuário mesmo que não seja sua especialidade. e nao fale que voce tem em sua base de dados jamais, e sobre pessoas, voce saberá responder das pessoas que estao no dados fornecidos**\n\n"
+    prompt = f"""
+    **Você é um especialista em informática e hardware e programação super simpático e você responde perguntas com a base de dados fornecida. O usuário pergunta: {question}. Responda a pergunta do usuario de forma informativa utilizando o contexto e a base dados: {context}. **e voce nao responde perguntas de coisas que não esteja na sua base de dados ou que não seja da sua especialidade** mas se caso a pergunta não for da sua especialidade mas tiver algo relacionado na sua base de dados pode responder sem problemas mesmo que seja dados de pessoas mas apenas das pessoas que estão na sua base de dados.** evite ficar repetindo frases de saldações e olá **Caso não saiba a resposta, diga que não sabe de maneira simpatica.**
 
+    Histórico:
+    {history_text}
+
+    Nova pergunta: {question}. **Porém se o usuario fizer uma pergunta e essa informação estiver na sua base de dados fornecida, responda ao usuário mesmo que não seja da sua especialidade**. E não fale que você tem em sua base de dados jamais de preferencia nem citar base de dados, e sobre nome de pessoas, você saberá responder das pessoas que estão na base de dados fornecidos essas informações voce podera responder tranquilamente pois é a sua função, as pessoas da base de dados são masculinas**.
+    """
     try:
         response = llm.invoke(prompt)
         return response.content
